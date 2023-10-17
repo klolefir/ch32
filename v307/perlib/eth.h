@@ -37,6 +37,8 @@ enum {
 };
 
 void eth_init(const uint8_t *mac_addr);
+uint32_t eth_receive(uint8_t *recv_data);
+void eth_transmit(const uint8_t *send_data, const uint32_t size);
 void eth_read_phy_reg(const uint16_t phy_addr, const uint16_t reg, uint16_t *val);
 void eth_write_phy_reg(const uint16_t phy_addr, const uint16_t reg, const uint16_t val);
 

@@ -1,5 +1,19 @@
 #include "eth.h"
 #include "rcc.h"
+#include "kestring.h"
+
+static void eth_filter_init(void);
+static void eth_control_init(void);
+static void eth_flow_control_init(void);
+static void eth_dma_init(void);
+static void eth_rcc_init(void);
+static void eth_irq_init(void);
+static void eth_dmatxdesc_init(void);
+static void eth_dmarxdesc_init(void);
+static void eth_start(void);
+static void eth_phy_init(void);
+static void eth_reset(void);
+static void eth_set_mac(const uint8_t *mac_addr);
 
 enum {
 	/*MACCR*/
@@ -186,63 +200,69 @@ typedef struct {
 		uint32_t rdes3;
 		uint32_t tdes3;
 	};
-#if 0
-	uint32_t status;
-	uint32_t buff_size;
-	union {
-		uint32_t buff1_addr;
-		uint32_t timestamp_lsb;
-	};
-	union {
-		uint32_t buff2_addr;
-		uint32_t nextdesc_addr;
-		uint32_t timestamp_msb;
-	};
-#endif
 } eth_dmadesc_t;
 
 enum {
-	eth_dmadesc_own_pos = 31,
-	eth_dmadesc_own_cpu = (0 << eth_dmadesc_own_pos),
-	eth_dmadesc_own_dma = (1 << eth_dmadesc_own_pos),
+	eth_dmarxdesc_own_pos = 31,
+	eth_dmarxdesc_own = (1 << eth_dmarxdesc_own_pos),
 
-	eth_dmadesc_rch_pos = 14,
-	eth_dmadesc_rch = (1 << eth_dmadesc_rch_pos),
+	eth_dmarxdesc_es_pos = 15,
+	eth_dmarxdesc_es = (1 << eth_dmarxdesc_es_pos),
 
-	eth_dmadesc_tch_pos = 20,
-	eth_dmadesc_tch = (1 << eth_dmadesc_tch_pos),
+	eth_dmarxdesc_fs_pos = 9,
+	eth_dmarxdesc_fs = (1 << eth_dmarxdesc_fs_pos),
 
-	eth_dmadesc_tbs2_pos = 16,
-	eth_dmadesc_tbs1_pos = 0,
+	eth_dmarxdesc_ls_pos = 9,
+	eth_dmarxdesc_ls = (1 << eth_dmarxdesc_ls_pos),
+
+	eth_dmarxdesc_fl_pos = 16,
+	eth_dmarxdesc_fl = (0x3FFF << eth_dmarxdesc_fl_pos),
+
+	eth_dmarxdesc_rer_pos = 15,
+	eth_dmarxdesc_rer = (1 << eth_dmarxdesc_rer_pos),
+
+	eth_dmarxdesc_rch_pos = 14,
+	eth_dmarxdesc_rch = (1 << eth_dmarxdesc_rch_pos),
 };
 
-__attribute__((__aligned__(4))) eth_dmadesc_t rx_descriptor[eth_rxbuff_num];
-__attribute__((__aligned__(4))) eth_dmadesc_t tx_descriptor[eth_txbuff_num];
+enum {
+	eth_dmatxdesc_own_pos = 31,
+	eth_dmatxdesc_own = (1 << eth_dmatxdesc_own_pos),
 
-__attribute__((__aligned__(4))) uint8_t rx_buff[eth_rxbuff_num * eth_rxbuff_size];
-__attribute__((__aligned__(4))) uint8_t tx_buff[eth_txbuff_num * eth_txbuff_size];
+	eth_dmatxdesc_fs_pos = 28,
+	eth_dmatxdesc_fs = (1 << eth_dmarxdesc_fs_pos),
 
+	eth_dmatxdesc_ls_pos = 29,
+	eth_dmatxdesc_ls = (1 << eth_dmatxdesc_ls_pos),
 
-static void eth_deinit(void);
-static void eth_filter_init(void);
-static void eth_control_init(void);
-static void eth_flow_control_init(void);
-static void eth_dma_init(void);
-static void eth_rcc_init(void);
-static void eth_irq_init(void);
-static void eth_dmatxdesc_init(void);
-static void eth_dmarxdesc_init(void);
-static void eth_start(void);
-static void eth_reset(void);
-static void eth_set_mac(const uint8_t *mac_addr);
+	eth_dmatxdesc_fl_pos = 16,
+	eth_dmatxdesc_fl = (0x3FFF << eth_dmatxdesc_fl_pos),
+
+	eth_dmatxdesc_tch_pos = 20,
+	eth_dmatxdesc_tch = (1 << eth_dmatxdesc_tch_pos),
+
+	eth_dmatxdesc_tbs1_pos = 0,
+	eth_dmatxdesc_tbs1 = (0x1FFF << eth_dmatxdesc_tbs1_pos)
+};
+
+__attribute__((__aligned__(4)))
+static eth_dmadesc_t rx_descriptor[eth_rxbuff_num];
+static eth_dmadesc_t *rx_descriptor_ptr;
+
+__attribute__((__aligned__(4)))
+static eth_dmadesc_t tx_descriptor[eth_txbuff_num];
+static eth_dmadesc_t *tx_descriptor_ptr;
+
+__attribute__((__aligned__(4))) 
+static uint8_t rx_buff[eth_rxbuff_num * eth_rxbuff_size];
+__attribute__((__aligned__(4)))
+static uint8_t tx_buff[eth_txbuff_num * eth_txbuff_size];
 
 void eth_init(const uint8_t *mac_addr)
 {
 	eth_rcc_init();
 	/* enable internal phy */
 	EXTEN->EXTEN_CTR |= EXTEN_ETH_10M_EN;
-
-	/*eth_deinit();*/
 
 	eth_reset();
 
@@ -257,7 +277,45 @@ void eth_init(const uint8_t *mac_addr)
 	ETH->MACCR &= ~(eth_fes_100mbs | eth_fes_1gbs);
 
 	eth_start();
-	eth_write_phy_reg(eth_phy_addr, eth_phy_bmcr_addr, eth_phy_reset); 
+	eth_phy_init();
+}
+
+uint32_t eth_receive(uint8_t *recv_data)
+{
+	uint32_t size;
+
+	if((rx_descriptor_ptr->rdes0 & eth_dmarxdesc_own) && /* is owned */
+		!(rx_descriptor_ptr->rdes0 & eth_dmarxdesc_es) &&  /*is error*/
+		(rx_descriptor_ptr->rdes0 & eth_dmarxdesc_ls) && /*is last desc*/ 
+		(rx_descriptor_ptr->rdes0 & eth_dmarxdesc_fs)) /*is first desc*/
+	{
+		size = ((rx_descriptor_ptr->rdes0 & eth_dmarxdesc_fl) >> eth_dmarxdesc_fl_pos) - 4;
+		kememcpy(recv_data, &(rx_descriptor_ptr->rdes2), size);
+	}
+	else
+	{
+		return 0;
+	}
+
+	rx_descriptor_ptr->rdes0 = eth_dmarxdesc_own;
+	rx_descriptor_ptr = (eth_dmadesc_t *)(rx_descriptor_ptr->rdes3);
+
+	return size;
+}
+
+void eth_transmit(const uint8_t *send_data, const uint32_t size)
+{
+	if(tx_descriptor_ptr->rdes0 & eth_dmatxdesc_own)
+		return;
+
+	kememcpy(&(tx_descriptor_ptr->rdes2), send_data, size);
+	tx_descriptor_ptr->rdes1 = (size & (eth_dmatxdesc_tbs1 >> eth_dmatxdesc_tbs1_pos));
+	tx_descriptor_ptr->rdes0 |=
+		eth_dmatxdesc_ls |
+		eth_dmatxdesc_fs |
+		eth_dmatxdesc_own;
+
+	tx_descriptor_ptr = (eth_dmadesc_t *)(tx_descriptor_ptr->rdes2)	;
 }
 
 void eth_rcc_init()
@@ -265,20 +323,6 @@ void eth_rcc_init()
 	rcc_periph_enable(rcc_eth_id);
 	rcc_periph_enable(rcc_ethrx_id);
 	rcc_periph_enable(rcc_ethtx_id);
-
-
-#if 0
-	/* set internal phy clock 60mhz */
-	rcc_pll3_disable();
-	rcc_prediv2_config(rcc_prediv2_2);
-	rcc_pll3mul_config(rcc_pll3mul_15);
-	rcc_pll3_enable();
-#endif
-}
-
-void eth_deinit(void)
-{
-	rcc_periph_reset(rcc_eth_id);
 }
 
 void eth_start()
@@ -403,9 +447,9 @@ void eth_dmarxdesc_init()
 	eth_dmadesc_t *rxdesc_ptr;
 	for(i = 0; i < eth_rxbuff_num; i++) {
 		rxdesc_ptr = rx_descriptor + i;
-		rxdesc_ptr->rdes0 = eth_dmadesc_own_dma;
+		rxdesc_ptr->rdes0 = eth_dmarxdesc_own;
 		rxdesc_ptr->rdes1 =
-			eth_dmadesc_rch |
+			eth_dmarxdesc_rch |
 			eth_rxbuff_size;
 		rxdesc_ptr->rdes2 = (uint32_t)&(rx_buff[i * eth_rxbuff_size]); 
 		if(i < (eth_rxbuff_num - 1)) {
@@ -415,6 +459,7 @@ void eth_dmarxdesc_init()
 		}
 	}
 
+	rx_descriptor_ptr = rx_descriptor;
 	ETH->DMARDLAR = (uint32_t)rx_descriptor;
 }
 
@@ -424,7 +469,7 @@ void eth_dmatxdesc_init()
 	eth_dmadesc_t *txdesc_ptr;
 	for(i = 0; i < eth_txbuff_num; i++) {
 		txdesc_ptr = tx_descriptor + i;
-		txdesc_ptr->rdes0 = eth_dmadesc_tch;
+		txdesc_ptr->rdes0 = eth_dmatxdesc_tch;
 		txdesc_ptr->rdes2 = (uint32_t)&(tx_buff[i * eth_txbuff_size]); 
 
 		if(i < (eth_txbuff_num - 1)) {
@@ -434,6 +479,7 @@ void eth_dmatxdesc_init()
 		}
 	}
 
+	tx_descriptor_ptr = tx_descriptor;
 	ETH->DMARDLAR = (uint32_t)tx_descriptor;
 }
 
@@ -462,9 +508,14 @@ void eth_irq_init(void)
 
 }
 
-static void eth_reset(void)
+void eth_reset(void)
 {
 	ETH->DMABMR |= eth_softreset;
 	while(ETH->DMABMR & eth_softreset)
 	{}
+}
+
+void eth_phy_init(void)
+{
+	eth_write_phy_reg(eth_phy_addr, eth_phy_bmcr_addr, eth_phy_reset); 
 }
