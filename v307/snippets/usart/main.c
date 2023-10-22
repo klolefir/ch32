@@ -1,11 +1,12 @@
 #include "usart.h"
+#include "tim.h"
+#include "rcc.h"
 
 int main(void)
 {
 	char c;
 	usart_rx_status_t rx_status;
-	SystemInit();
-    SystemCoreClockUpdate();
+	rcc_init();
 
 	usart_t usart;
 	usart.usart = usart_num_1;

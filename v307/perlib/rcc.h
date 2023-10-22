@@ -3,6 +3,8 @@
 
 #include "ch32v30x.h"
 
+typedef uint8_t rcc_bus_div_t;
+
 enum {
 	rcc_prediv1_pos = 0,
 	rcc_prediv1		= (0b0000 << rcc_prediv1_pos), /* div 1 */ 
@@ -101,14 +103,16 @@ typedef enum {
 	rcc_ethtx_id
 } rcc_periph_id_t;
 
-void rcc_deinit();
-void rcc_init();
-void rcc_pll3_enable();
-void rcc_pll3_disable();
+void rcc_deinit(void);
+void rcc_init(void);
+void rcc_pll3_enable(void);
+void rcc_pll3_disable(void);
 void rcc_prediv2_config(const rcc_prediv2_t div);
 void rcc_pll3mul_config(const rcc_pll3mul_t mul);
 void rcc_periph_enable(const rcc_periph_id_t id);
 void rcc_periph_reset(const rcc_periph_id_t id);
-uint32_t rcc_get_system_clk();
+uint32_t rcc_get_system_clk(void);
+uint32_t rcc_get_apb1_clk(void);
+uint32_t rcc_get_apb2_clk(void);
 
 #endif

@@ -33,7 +33,7 @@ void tim_hold_init()
 {
 	tim_t hold_tim;
 	hold_tim.tim = tim_num_6;
-	hold_tim.psc = 16800;
+	hold_tim.psc = 14400;
 	hold_tim.arr = 10;
 	hold_tim.irq_state = tim_irq_on;
 

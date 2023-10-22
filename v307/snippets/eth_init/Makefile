@@ -9,6 +9,7 @@ VENDOR_PATH = $(V307_PATH)/vendor
 CORE_PATH = $(VENDOR_PATH)/core
 V307LIB_PATH = $(VENDOR_PATH)/ch32v307
 PERLIB_PATH = $(V307_PATH)/perlib
+KELIB_PATH = $(V307_PATH)/kelib
 OPTIMIZATION = -O0
 
 CFLAGS = -Wall -g -march=rv32imafc -mabi=ilp32f $(OPTIMIZATION)
@@ -17,10 +18,12 @@ MAIN_INC 	= 	-I ./
 VENDOR_INC 	= 	-I $(CORE_PATH) \
 				-I $(V307LIB_PATH)/inc
 PERLIB_INC 	=  	-I $(PERLIB_PATH)
+KELIB_INC	=	-I $(KELIB_PATH)
 
 INC = 	$(MAIN_INC) \
 		$(VENDOR_INC) \
-		$(PERLIB_INC)
+		$(PERLIB_INC) \
+		$(KELIB_INC)
 
 MACRO =	-D CH32V30x_D8C
 
@@ -36,10 +39,12 @@ STARTUP_SRC = 	$(V307_PATH)/general/startup.s
 PERLIB_SRC	=	$(PERLIB_PATH)/gpio.c \
 				$(PERLIB_PATH)/rcc.c \
 				$(PERLIB_PATH)/eth.c
+KELIB_SRC	= 	$(KELIB_PATH)/kestring.c
 SRC = 	$(MAIN_SRC) \
 		$(SYSTEM_SRC) \
 		$(STARTUP_SRC) \
-		$(PERLIB_SRC)
+		$(PERLIB_SRC) \
+		$(KELIB_SRC)
 
 ELF = firmware.elf
 BIN = firmware.bin

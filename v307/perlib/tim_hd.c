@@ -1,6 +1,7 @@
 #include "tim_hd.h"
 
 void TIM6_IRQHandler(void)    __attribute__((interrupt(/*"WCH-Interrupt-fast"*/)));
+void TIM7_IRQHandler(void)    __attribute__((interrupt(/*"WCH-Interrupt-fast"*/)));
 
 static volatile uint32_t tim6_ticks = 0;
 static volatile uint32_t tim7_ticks = 0;
@@ -25,7 +26,6 @@ void tim7_set_ticks(const uint32_t ticks)
 	tim7_ticks = ticks;
 }
 
-#if 1
 void TIM6_IRQHandler()
 {
 	uint32_t ticks;
@@ -36,7 +36,6 @@ void TIM6_IRQHandler()
 	}
 	tim->INTFR &= ~TIM_UIF;
 }
-#endif
 
 void TIM7_IRQHandler()
 {

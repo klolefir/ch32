@@ -7,7 +7,7 @@ int main(void)
     SystemCoreClockUpdate();
 
 	gpio_t led;
-#if 1
+#if 0
 	led.port = gpio_port_b;
 	led.pin = gpio_pin_10;
 #else

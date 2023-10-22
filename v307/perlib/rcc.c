@@ -1,6 +1,8 @@
 #include "rcc.h"
 #include "general.h"
 
+static uint32_t system_clk;
+
 void rcc_deinit()
 {
 	RCC->CTLR |= RCC_HSION;
@@ -50,6 +52,7 @@ void rcc_init()
 	RCC->CFGR0 |= RCC_SW_PLL;
 	while((RCC->CFGR0 & RCC_SWS) != RCC_SWS_PLL)
 	{}
+	system_clk = 144000000;
 }
 
 void rcc_periph_enable(const rcc_periph_id_t id)
@@ -135,7 +138,17 @@ void rcc_periph_reset(const rcc_periph_id_t id)
 
 uint32_t rcc_get_system_clk()
 {
-	return SystemCoreClock;
+	return system_clk;
+}
+
+uint32_t rcc_get_apb1_clk()
+{
+	return system_clk;
+}
+
+uint32_t rcc_get_apb2_clk()
+{
+	return system_clk / 2;
 }
 
 void rcc_pll3_enable()

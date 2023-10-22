@@ -15,7 +15,8 @@ typedef enum {
 	nvic_usart2_irqn = USART2_IRQn,
 	nvic_usart3_irqn = USART3_IRQn,
 	nvic_tim6_irqn = TIM6_IRQn,
-	nvic_tim7_irqn = TIM7_IRQn
+	nvic_tim7_irqn = TIM7_IRQn,
+	nvic_eth_irqn = ETH_IRQn
 } nvic_irqn_t;
 
 void nvic_enable_irq(nvic_irqn_t irqn, nvic_irq_prior_t priority);

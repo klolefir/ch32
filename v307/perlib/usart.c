@@ -291,8 +291,17 @@ void rx_init(const usart_t *usart_set)
 
 void baud_init(const usart_t *usart_set)
 {
+	uint32_t clk;
 	USART_TypeDef *usart = switch_usart(usart_set);
-	uint32_t clk = rcc_get_system_clk();
+	switch(usart_set->usart) {
+	case usart_num_1:
+		clk = rcc_get_apb2_clk();
+		break;
+	case usart_num_2:
+	case usart_num_3:
+		clk = rcc_get_apb1_clk();
+		break;
+	}
 	rcc_bus_div_t usart_bus_div = switch_bus_div(usart_set);
 
 #if 0

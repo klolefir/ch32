@@ -1,5 +1,7 @@
 #include "usart.h"
 
+void USART2_IRQHandler(void)    __attribute__((interrupt(/*"WCH-Interrupt-fast"*/)));
+
 usart_t usart;
 
 int main(void)

@@ -35,3 +35,15 @@ void kelmemcpy(void *dst, const void *src, const uint32_t count)
 		*(dst_byte + j) = *(src_byte + i);
 	}
 }
+
+uint8_t kememcmp(const void *dst, const void *src, const uint32_t count)
+{
+	const uint8_t *dst_byte = dst;
+	const uint8_t *src_byte = src;
+	uint32_t i;
+	for(i = 0; i < count; i++) {
+		if(dst_byte[i] != src_byte[i])
+			return 1;
+	}
+	return 0;
+}

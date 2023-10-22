@@ -38,7 +38,9 @@ STARTUP_SRC = 	$(V307_PATH)/general/startup.s
 PERLIB_SRC	=	$(PERLIB_PATH)/gpio.c \
 				$(PERLIB_PATH)/rcc.c \
 				$(PERLIB_PATH)/nvic.c \
-				$(PERLIB_PATH)/usart.c
+				$(PERLIB_PATH)/usart.c \
+				$(PERLIB_PATH)/tim.c \
+				$(PERLIB_PATH)/tim_hd.c
 KELIB_SRC	=	$(KELIB_PATH)/kestring.c
 SRC = 	$(MAIN_SRC) \
 		$(SYSTEM_SRC) \
