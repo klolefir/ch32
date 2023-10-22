@@ -2,3 +2,4 @@
 *.elf
 EVT
 core
+!v307/vendor/core
